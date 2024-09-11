@@ -1,0 +1,129 @@
+---
+title: "Extracting data from the GREGoR data model"
+output: html_notebook
+---
+
+This notebook has examples of how to extract data from workspace tables in the
+[GREGoR data model](https://github.com/UW-GAC/gregor_data_models). We use the
+[AnVIL R package](https://bioconductor.org/packages/AnVIL) to retrieve the 
+data tables, and the [dplyr package](https://dplyr.tidyverse.org) to join tables 
+in R. Both of these packages are installed in the AnVIL RStudio and Jupyter 
+cloud environments.
+
+# Identify a participant and family members
+
+Let's say we are interested in retrieving data for a participant as well as all
+family members. We can use the "participant" table to link all family members
+by their family_id.
+
+We read tables from a workspace with the `avtable` function.
+
+```{r}
+library(AnVIL)
+library(dplyr)
+workspace <- "GREGOR_COMBINED_CONSORTIUM_U07"
+namespace <- "gregor-dcc"
+participant <- avtable("participant", name=workspace, namespace=namespace)
+```
+
+Find the family_id for the participant, then filter the participant table to
+all members of this family.
+
+```{r}
+my_participant_id <- "PMGRC-7-5-2"
+my_family <- participant %>%
+  filter(participant_id == my_participant_id) %>%
+  select(family_id) %>%
+  left_join(participant, by="family_id")
+my_family
+```
+
+Find phenotypes for all family members.
+
+```{r}
+phenotype <- avtable("phenotype", name=workspace, namespace=namespace)
+my_phenotype <- my_family %>%
+  select(participant_id) %>%
+  left_join(phenotype, by="participant_id")
+my_phenotype
+```
+
+Use the family table to find more details about the family.
+
+```{r}
+family <- avtable("family", name=workspace, namespace=namespace)
+my_family_details <- family %>%
+  filter(family_id == unique(my_family$family_id))
+my_family_details
+```
+
+# Find all analytes for participants in the family
+
+The analyte table has information about the tissue that was used for the
+experiments. We can filter this table by participant_id.
+
+```{r}
+analyte <- avtable("analyte", name=workspace, namespace=namespace)
+my_analyte <- analyte %>%
+  filter(participant_id %in% my_family$participant_id)
+my_analyte
+```
+
+
+# Find experiments for all participants in the family
+
+In the combined consortium workspace, the "experiment" table
+includes all experiments across data types and links them to participant ids, 
+making it more straightforward to find experiments for a given participant. We
+still need to query the experiment tables for each data type represented to
+find details on the experiments.
+
+```{r}
+experiment <- avtable("experiment", name=workspace, namespace=namespace)
+my_experiment <- experiment %>%
+  filter(participant_id %in% my_family$participant_id)
+my_experiment
+
+experiment_table_names <- unique(my_experiment$table_name)
+experiment_tables <- lapply(experiment_table_names, avtable, name=workspace, namespace=namespace)
+names(experiment_tables) <- experiment_table_names
+
+experiment_details <- list()
+for (t in experiment_table_names) {
+  experiment_details[[t]] <- my_experiment %>%
+    filter(table_name == t) %>%
+    select(participant_id, id_in_table) %>%
+    left_join(experiment_tables[[t]], by=c("id_in_table"=paste0(t, "_id")))
+}
+experiment_details
+```
+
+
+
+# Find all data files associated with a family
+
+In the combined consortium workspace, the "aligned" table
+includes all aligned read files across data types and links them to participant ids, 
+making it more straightforward to find files for a given participant. We
+still need to query the aligned tables for each data type represented to
+find details on the alignment.
+
+```{r}
+aligned <- avtable("aligned", name=workspace, namespace=namespace)
+my_aligned <- aligned %>%
+  filter(participant_id %in% my_family$participant_id)
+my_aligned
+
+aligned_table_names <- unique(my_aligned$table_name)
+aligned_tables <- lapply(aligned_table_names, avtable, name=workspace, namespace=namespace)
+names(aligned_tables) <- aligned_table_names
+
+aligned_details <- list()
+for (t in aligned_table_names) {
+  aligned_details[[t]] <- my_aligned %>%
+    filter(table_name == t) %>%
+    select(participant_id, id_in_table) %>%
+    left_join(aligned_tables[[t]], by=c("id_in_table"=paste0(t, "_id")))
+}
+aligned_details
+```
