@@ -127,3 +127,17 @@ for (t in aligned_table_names) {
 }
 aligned_details
 ```
+
+
+# Export a data table to use IGV
+
+We can add a new table to the workspace with a selection of files we'd like to open in IGV.
+Since each table in AnVIL must have a primary key <table_name>_id, we create an
+index for a table called "example" before importing it.
+
+```{r}
+aligned_details$aligned_dna_short_read %>%
+  tibble::rownames_to_column() %>%
+  rename(example_id = rowname) %>%
+  avtable_import(entity="example_id")
+```
