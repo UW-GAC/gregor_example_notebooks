@@ -1,0 +1,66 @@
+---
+title: "Joint callsets in the GREGoR data model"
+output: html_notebook
+---
+
+This notebook has examples of how to identify samples in a joint callset in the
+[GREGoR data model](https://github.com/UW-GAC/gregor_data_models). We use the
+[AnVIL R package](https://bioconductor.org/packages/AnVIL) to retrieve the 
+data tables, and the [dplyr package](https://dplyr.tidyverse.org) to join tables 
+in R. Both of these packages are installed in the AnVIL RStudio and Jupyter 
+cloud environments. We install the 
+[AnvilDataModels](https://github.com/UW-GAC/AnvilDataModels) package from GitHub.
+
+We read tables from a workspace with the `avtable` function.
+
+```{r}
+remotes::install_github("UW-GAC/AnvilDataModels")
+library(AnVIL)
+library(dplyr)
+library(AnvilDataModels)
+workspace <- "GREGOR_COMBINED_CONSORTIUM_U08"
+namespace <- "gregor-dcc"
+set_table <- avtable("aligned_dna_short_read_set", name=workspace, namespace=namespace)
+aligned_table <- avtable("aligned_dna_short_read", name=workspace, namespace=namespace)
+experiment_table <- avtable("experiment_dna_short_read", name=workspace, namespace=namespace)
+```
+
+Find the set with a certain id, then use the `unnest_set_table` function from
+the AnvilDataModels package to get the set table in long form (one row per id).
+
+```{r}
+joint_callset_id <- "GREGoR_DCC_A1_S2"
+joint_callset <- set_table %>%
+  filter(aligned_dna_short_read_set_id == joint_callset_id) %>%
+  unnest_set_table()
+```
+
+The sample IDs in the VCF header are the experiment_sample_ids, which are in
+the experiment table.
+
+```{r}
+sample_ids <- joint_callset %>%
+  left_join(aligned_table, by="aligned_dna_short_read_id") %>%
+  left_join(experiment_table, by="experiment_dna_short_read_id") %>%
+  select(experiment_dna_short_read_id, experiment_sample_id)
+```
+
+We can also get the participant ids from the analyte table.
+
+```{r}
+analyte_table <- avtable("analyte", name=workspace, namespace=namespace)
+participant_ids <- joint_callset %>%
+  left_join(aligned_table, by="aligned_dna_short_read_id") %>%
+  left_join(experiment_table, by="experiment_dna_short_read_id") %>%
+  left_join(analyte_table, by="analyte_id") %>%
+  select(participant_id, analyte_id, experiment_dna_short_read_id, experiment_sample_id)
+```
+
+Finally, find all the VCF files associated with the callset 
+from the called_variants table.
+
+```{r}
+called_variants_table <- avtable("called_variants_dna_short_read", name=workspace, namespace=namespace)
+vcf_files <- called_variants_table %>%
+  filter(aligned_dna_short_read_set_id == joint_callset_id)
+```
