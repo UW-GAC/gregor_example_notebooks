@@ -19,9 +19,10 @@ by their family_id.
 We read tables from a workspace with the `avtable` function.
 
 ```{r}
+BiocManager::install("AnVILGCP")
 library(AnVIL)
 library(dplyr)
-workspace <- "GREGOR_COMBINED_CONSORTIUM_U07"
+workspace <- "GREGOR_COMBINED_CONSORTIUM_U11"
 namespace <- "gregor-dcc"
 participant <- avtable("participant", name=workspace, namespace=namespace)
 ```

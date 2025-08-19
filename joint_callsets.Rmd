@@ -14,11 +14,12 @@ cloud environments. We install the
 We read tables from a workspace with the `avtable` function.
 
 ```{r}
+BiocManager::install("AnVILGCP")
 remotes::install_github("UW-GAC/AnvilDataModels")
 library(AnVIL)
 library(dplyr)
 library(AnvilDataModels)
-workspace <- "GREGOR_COMBINED_CONSORTIUM_U08"
+workspace <- "GREGOR_COMBINED_CONSORTIUM_U11"
 namespace <- "gregor-dcc"
 set_table <- avtable("aligned_dna_short_read_set", name=workspace, namespace=namespace)
 aligned_table <- avtable("aligned_dna_short_read", name=workspace, namespace=namespace)
@@ -29,7 +30,7 @@ Find the set with a certain id, then use the `unnest_set_table` function from
 the AnvilDataModels package to get the set table in long form (one row per id).
 
 ```{r}
-joint_callset_id <- "GREGoR_DCC_A1_S2"
+joint_callset_id <- "GREGoR_DCC_A1_S3"
 joint_callset <- set_table %>%
   filter(aligned_dna_short_read_set_id == joint_callset_id) %>%
   unnest_set_table()
